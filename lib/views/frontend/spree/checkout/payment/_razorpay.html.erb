@@ -1,0 +1,69 @@
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+  var options = {
+    "key": "rzp_test_v20GmMIgeQgpuS",
+    "amount": "<%=(@current_order.total.to_f * 100).to_i%>", // 1000 paise = INR 10
+    "name": "Alterbasic",
+    // "description": "Purchase Description",
+    "image": "<%=image_url('alter_Basic_Logo.png')%>",
+    "handler": function (response){
+      RazorpayResponseHandler(response)
+    },
+    "prefill": {
+      "name": "<%=@current_order.bill_address.full_name%>",
+      "email": "<%=@current_order.email%>",
+      "phone": "<%=@current_order.bill_address%>"
+    },
+    "notes": {
+      "name": "<%= @order.bill_address&.full_name %>",
+      "address_line1": "<%= @order.bill_address&.address1 %>",
+      "address_line2": "<%= @order.bill_address&.address2 %>",
+      "address_city": "<%= @order.bill_address&.city %>",
+      "address_state": "<%= @order.bill_address&.state_text %>",
+      "address_zip": "<%= @order.bill_address&.zipcode %>",
+      "address_country": "<%= @order.bill_address&.country %>"
+    },
+    "theme": {
+      "color": "#ee2661"
+    },
+    "modal": {
+        escape: false,
+        "ondismiss": function(){
+          $('.btn.btn-lg.btn-success').removeClass('disabled');
+        }
+    }
+  };
+  var rzp1 = new Razorpay(options);
+
+  $(function() {
+    $(".btn.btn-lg.btn-success").val("Pay and Continue");
+    var $form = $('#checkout_form_payment');
+    $form.submit(function(event) {
+      // Disable the submit button to prevent repeated clicks:
+      $form.find('.submit').prop('disabled', true);
+      // Open razorpay modal
+      rzp1.open();
+      // Prevent the form from being submitted:
+      return false;
+    });
+  });
+
+  function RazorpayResponseHandler(response) {
+    var $form = $('#checkout_form_payment');
+    // Get the razorpay_payment_id:
+    var token = response.razorpay_payment_id;
+    if (token) {
+      $.post("/save_payment_detail",
+      { razorpay_payment_id: token},
+      function(data, status){
+        if(data.code === 200){
+          // Insert the token ID into the form so it gets submitted to the server:
+          $form.append($('<input type="hidden" id="razorpay_payment_id" name="razorpay_payment_id">').val(token));
+          $form.find('.btn.btn-lg.btn-success').attr('disabled', false);
+          // Submit the form:
+          $form.get(0).submit();
+        }
+      });
+    }
+  };
+</script>
